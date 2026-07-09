@@ -1,31 +1,63 @@
 # Actualités Polytechniciennes
 
-Site d'actualités développé en **PHP / MySQL / HTML / CSS**, avec un menu de catégories généré dynamiquement depuis la base de données.
+Site d'actualités développé en **PHP / MySQL / HTML / CSS**, structuré selon le patron d'architecture **MVC** (Modèle - Vue - Contrôleur).
 
-## Fonctionnalités
+## Versions
 
-- Liste des articles les plus récents sur la page d'accueil
-- Menu dynamique construit à partir de la table `Categorie`
-- Filtrage des articles par catégorie (`index.php?cat=ID`)
-- Page de détail pour chaque article (`article.php?id=ID`)
-- Design responsive inspiré de la maquette fournie
+- **v1.0** : version initiale, code procédural (pas de séparation MVC).
+- **v2.0** : refactoring complet en MVC, avec front controller, modèles, contrôleurs et vues séparés.
+
+## Architecture MVC
+
+Conformément au cours (séparation stricte des responsabilités) :
+
+- **Modèle** (`models/`) : représente et manipule les données. C'est la **seule** couche qui exécute des requêtes SQL (via `core/Database.php`). Il ne connaît ni la vue, ni le contrôleur.
+- **Vue** (`views/`) : affiche les données transmises par le contrôleur. Elle n'effectue aucun traitement métier et ne fait aucune requête SQL.
+- **Contrôleur** (`controllers/`) : intercepte les requêtes de l'utilisateur, appelle le(s) modèle(s), puis redirige vers la vue adéquate (méthode `render()`). Il ne fait aucun traitement métier ni requête SQL directe.
+
+Toutes les requêtes passent par un **front controller** unique (`index.php`), qui route vers le bon contrôleur/action selon les paramètres `?controller=...&action=...`.
+
+```
+Navigateur → index.php (front controller) → Contrôleur → Modèle → Base de données
+                                                 ↓
+                                               Vue (layout + template) → Navigateur
+```
 
 ## Structure du projet
 
 ```
 .
-├── article.php          # Page de détail d'un article
-├── index.php             # Page d'accueil (liste + filtre par catégorie)
-├── mglsi_news.sql        # Script de création de la base de données
+├── index.php                    # Front controller : point d'entrée unique, routage
+├── config/
+│   └── config.php                # Paramètres de connexion à la base de données
+├── core/
+│   ├── Database.php               # Connexion PDO centralisée (singleton)
+│   ├── Controller.php             # Classe de base : gère le rendu des vues
+│   └── helpers.php                # Fonctions utilitaires pour les vues (dates, troncature)
+├── models/
+│   ├── Article.php                 # Toutes les requêtes SQL liées aux articles
+│   └── Categorie.php               # Toutes les requêtes SQL liées aux catégories
+├── controllers/
+│   └── ArticleController.php       # index() : liste/filtre ; show() : détail d'un article
+├── views/
+│   ├── layout/
+│   │   ├── header.php               # En-tête HTML + menu dynamique
+│   │   └── footer.php               # Pied de page HTML
+│   └── article/
+│       ├── index.php                 # Template liste des articles
+│       └── show.php                  # Template détail d'un article
 ├── css/
-│   └── style.css         # Feuille de style
-├── includes/
-│   ├── db.php             # Connexion PDO à la base de données
-│   ├── functions.php      # Fonctions utilitaires (troncature, dates...)
-│   ├── header.php         # En-tête + menu dynamique
-│   └── footer.php         # Pied de page
-└── img/                   # Dossier pour d'éventuelles images
+│   └── style.css
+└── mglsi_news.sql                # Script de création de la base de données
 ```
+
+## Routes disponibles
+
+| URL | Contrôleur / Action | Description |
+|---|---|---|
+| `index.php` | `ArticleController::index()` | Liste des derniers articles |
+| `index.php?cat=2` | `ArticleController::index()` | Liste filtrée par catégorie |
+| `index.php?controller=article&action=show&id=3` | `ArticleController::show()` | Détail d'un article |
 
 ## Installation
 
@@ -37,20 +69,18 @@ Site d'actualités développé en **PHP / MySQL / HTML / CSS**, avec un menu de 
 
 2. Créer la base de données en important le script SQL fourni :
    ```bash
-   mysql -u root -p < mglsi_news.sql
+   mysql -u root < mglsi_news.sql
    ```
-   Ce script crée la base `mglsi_news`, les tables `Article` et `Categorie`,
-   insère des données de test, et crée l'utilisateur `mglsi_user` (mot de passe `passer`).
 
-3. Vérifier les identifiants de connexion dans `includes/db.php` si besoin
-   (hôte, nom de la base, utilisateur, mot de passe).
+3. Vérifier les identifiants de connexion dans `config/config.php` si besoin.
 
 4. Lancer un serveur PHP local depuis le dossier du projet :
    ```bash
    php -S localhost:8000
    ```
+   (ou placer le dossier dans `htdocs/` avec XAMPP)
 
-5. Ouvrir [http://localhost:8000](http://localhost:8000) dans le navigateur.
+5. Ouvrir [http://localhost:8000](http://localhost:8000) (ou `http://localhost/nom-du-dossier/` avec XAMPP).
 
 ## Base de données
 
@@ -59,10 +89,7 @@ Site d'actualités développé en **PHP / MySQL / HTML / CSS**, avec un menu de 
 
 ## À venir
 
-- Espace d'administration pour créer/modifier/supprimer des articles
+- Espace d'administration (CRUD articles) avec son propre contrôleur/modèle
 - Pagination des articles
 - Recherche par mot-clé
-
-## Version
-
-**v1.0** — Version initiale : affichage public des articles avec menu dynamique par catégorie.
+- Pattern DAO pour découpler davantage modèles et accès aux données
